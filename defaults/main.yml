@@ -1,0 +1,5 @@
+---
+# defaults file for role_template
+macbook_trackpad_on_gnome:
+  install_dir: ~/macbook_trackpad_on_gnome_install
+

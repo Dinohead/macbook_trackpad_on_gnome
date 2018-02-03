@@ -1,0 +1,72 @@
+---
+# from: https://howchoo.com/g/mdy0ngziogm/the-perfect-almost-touchpad-settings-on-linux-2
+
+- name: YUM | ensure required rpms are installed
+  become: true
+  yum:
+    name: "{{ item }}"
+    state: present
+    update_cache: no
+  with_items:
+  - mtdev-devel
+  - mtdev
+  - xorg-x11-server-devel
+
+- name: FILE | ensure install directory is present
+  file:
+    path: "{{ macbook_trackpad_on_gnome.install_dir }}"
+    state: directory
+    mode: u=rwx,g=rwx,o=rx
+
+# git clone https://github.com/p2rkw/xf86-input-mtrack.git
+- name: GIT | Clone the mtrack repoistory
+  git:
+    accept_hostkey: true
+    dest: "{{ macbook_trackpad_on_gnome.install_dir }}"
+    force: true
+    repo: 'https://github.com/p2rkw/xf86-input-mtrack.git'
+
+# sudo ./configure --with-xorg-module-dir=/usr/lib/xorg/modules
+- name: SHELL | Confgure
+  shell: './configure --with-xorg-module-dir=/usr/lib/xorg/modules'
+  args:
+    chdir: '{{ macbook_trackpad_on_gnome.install_dir }}'
+
+
+# make
+- name: SHELL | Make
+  shell: make
+  args:
+    chdir: '{{ macbook_trackpad_on_gnome.install_dir }}'
+
+- name: STAT | Register install directory
+  stat:
+    path: '{{ macbook_trackpad_on_gnome.install_dir }}'
+  register: macbook_trackpad_on_gnome_path
+
+#- debug:
+#    var: macbook_trackpad_on_gnome_path
+
+# sudo make install
+- name: SHELL | Make install
+  become: true
+  shell: 'make install'
+  args:
+    chdir: '{{ macbook_trackpad_on_gnome_path.stat.path }}'
+
+
+# sudo vim /usr/share/X11/xorg.conf.d/50-mtrack.conf
+- name: TEMPLATE | Template out trackpad settings
+  become: true
+  template:
+    src: 50-mtrack.conf.j2
+    dest: /usr/share/X11/xorg.conf.d/50-mtrack.conf
+    owner: root
+    group: root
+    mode: 'u=rw,g=r,o=r'
+
+- name: FILE | remove install directory is present
+  file:
+    path: "{{ macbook_trackpad_on_gnome.install_dir }}"
+    state: absent
+    mode: u=rwx,g=rwx,o=rx
